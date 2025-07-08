@@ -441,8 +441,30 @@ post_data = {
     # Add other params here
 }
 
-requests.post("http://localhost:8001/marker", data=json.dumps(post_data)).json()
+requests.post("http://localhost:8001/marker", json=post_data).json()
 ```
+
+### Parameters
+
+Both the JSON and upload endpoints accept the most common conversion options:
+
+- `page_range` – pages to convert (`"0,5-10"`)
+- `output_format` – `markdown`, `json`, `html`, or `chunks`
+- `force_ocr` – force OCR even on digital PDFs
+- `paginate_output` – insert page breaks in the result
+- `use_llm` – use an LLM for higher quality output
+- `format_lines` – reformat lines with OCR for inline math
+- `block_correction_prompt` – optional prompt for LLM correction
+- `strip_existing_ocr` – remove existing OCR text before processing
+- `redo_inline_math` – higher quality inline math when `use_llm` is set
+- `disable_image_extraction` – skip image extraction
+- `debug` – enable verbose logging
+- `processors` – comma separated processors to apply
+- `config_json` – path to extra configuration JSON
+- `converter_cls` – converter class to use
+- `llm_service` – LLM service implementation
+
+See the automatically generated docs at `localhost:8001/docs` for the full schema.
 
 Note that this is not a very robust API, and is only intended for small-scale use.  If you want to use this server, but want a more robust conversion option, you can use the hosted [Datalab API](https://www.datalab.to/plans).
 
