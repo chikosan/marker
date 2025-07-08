@@ -415,6 +415,19 @@ pip install -U uvicorn fastapi python-multipart
 marker_server --port 8001
 ```
 
+### Docker
+
+You can also run the server in a container. Build the image from the provided
+`Dockerfile` and expose the default FastAPI port:
+
+```bash
+docker build -t marker-api .
+docker run -p 8001:8000 marker-api
+```
+
+The server uses the most common conversion settings – converting the entire
+document to Markdown without forcing OCR or pagination.
+
 This will start a fastapi server that you can access at `localhost:8001`.  You can go to `localhost:8001/docs` to see the endpoint options.
 
 You can send requests like this:
