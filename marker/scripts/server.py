@@ -52,9 +52,10 @@ async def root():
     )
 
 
+
 class CommonParams(BaseModel):
     filepath: Annotated[
-        Optional[str], Field(description="The path to the PDF file to convert.")
+        Optional[str], Field(description="The path to the file to convert.")
     ]
     page_range: Annotated[
         Optional[str],
@@ -66,24 +67,61 @@ class CommonParams(BaseModel):
     force_ocr: Annotated[
         bool,
         Field(
-            description="Force OCR on all pages of the PDF.  Defaults to False.  This can lead to worse results if you have good text in your PDFs (which is true in most cases)."
+            description="Force OCR on all pages of the document. Defaults to False. This can lead to worse results if you have good text in the document (which is true in most cases).",
         ),
     ] = False
     paginate_output: Annotated[
         bool,
         Field(
-            description="Whether to paginate the output.  Defaults to False.  If set to True, each page of the output will be separated by a horizontal rule that contains the page number (2 newlines, {PAGE_NUMBER}, 48 - characters, 2 newlines)."
+            description="Whether to paginate the output.  Defaults to False.  If set to True, each page of the output will be separated by a horizontal rule that contains the page number (2 newlines, {PAGE_NUMBER}, 48 - characters, 2 newlines).",
         ),
     ] = False
     output_format: Annotated[
         str,
         Field(
-            description="The format to output the text in.  Can be 'markdown', 'json', or 'html'.  Defaults to 'markdown'."
+            description="The format to output the text in.  Can be 'markdown', 'json', 'html', or 'chunks'.",
         ),
     ] = "markdown"
+    use_llm: Annotated[
+        bool, Field(description="Use an LLM to improve accuracy.")
+    ] = False
+    format_lines: Annotated[
+        bool,
+        Field(description="Reformat all lines using a local OCR model for inline math, underlines, and bold."),
+    ] = False
+    block_correction_prompt: Annotated[
+        Optional[str],
+        Field(description="Prompt used to correct each block when LLM mode is active."),
+    ] = None
+    strip_existing_ocr: Annotated[
+        bool, Field(description="Strip existing OCR text before processing.")
+    ] = False
+    redo_inline_math: Annotated[
+        bool,
+        Field(description="Use an LLM to redo inline math for the highest quality."),
+    ] = False
+    disable_image_extraction: Annotated[
+        bool, Field(description="Disable image extraction from the document.")
+    ] = False
+    debug: Annotated[
+        bool, Field(description="Enable debug mode for verbose logging.")
+    ] = False
+    processors: Annotated[
+        Optional[str],
+        Field(description="Comma separated list of processors to use."),
+    ] = None
+    config_json: Annotated[
+        Optional[str],
+        Field(description="Path to a JSON file with additional configuration."),
+    ] = None
+    converter_cls: Annotated[
+        Optional[str], Field(description="Converter class to use.")
+    ] = None
+    llm_service: Annotated[
+        Optional[str], Field(description="LLM service class if use_llm is enabled.")
+    ] = None
 
-
-async def _convert_pdf(params: CommonParams):
+async def _convert_document(params: CommonParams):
     assert params.output_format in ["markdown", "json", "html", "chunks"], (
         "Invalid output format"
     )
@@ -128,19 +166,28 @@ async def _convert_pdf(params: CommonParams):
 
 
 @app.post("/marker")
-async def convert_pdf(params: CommonParams):
-    return await _convert_pdf(params)
+async def convert_document(params: CommonParams):
+    return await _convert_document(params)
 
 
 @app.post("/marker/upload")
-async def convert_pdf_upload(
+async def convert_upload(
     page_range: Optional[str] = Form(default=None),
     force_ocr: Optional[bool] = Form(default=False),
     paginate_output: Optional[bool] = Form(default=False),
     output_format: Optional[str] = Form(default="markdown"),
-    file: UploadFile = File(
-        ..., description="The PDF file to convert.", media_type="application/pdf"
-    ),
+    use_llm: Optional[bool] = Form(default=False),
+    format_lines: Optional[bool] = Form(default=False),
+    block_correction_prompt: Optional[str] = Form(default=None),
+    strip_existing_ocr: Optional[bool] = Form(default=False),
+    redo_inline_math: Optional[bool] = Form(default=False),
+    disable_image_extraction: Optional[bool] = Form(default=False),
+    debug: Optional[bool] = Form(default=False),
+    processors: Optional[str] = Form(default=None),
+    config_json: Optional[str] = Form(default=None),
+    converter_cls: Optional[str] = Form(default=None),
+    llm_service: Optional[str] = Form(default=None),
+    file: UploadFile = File(..., description="The file to convert."),
 ):
     upload_path = os.path.join(UPLOAD_DIRECTORY, file.filename)
     with open(upload_path, "wb+") as upload_file:
@@ -153,8 +200,19 @@ async def convert_pdf_upload(
         force_ocr=force_ocr,
         paginate_output=paginate_output,
         output_format=output_format,
+        use_llm=use_llm,
+        format_lines=format_lines,
+        block_correction_prompt=block_correction_prompt,
+        strip_existing_ocr=strip_existing_ocr,
+        redo_inline_math=redo_inline_math,
+        disable_image_extraction=disable_image_extraction,
+        debug=debug,
+        processors=processors,
+        config_json=config_json,
+        converter_cls=converter_cls,
+        llm_service=llm_service,
     )
-    results = await _convert_pdf(params)
+    results = await _convert_document(params)
     os.remove(upload_path)
     return results
 
